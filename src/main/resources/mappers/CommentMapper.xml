@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.my.community.mapper.CommentMapper">
+    <select id="selectByCommunityId"
+            resultType="com.my.community.domain.Comment"
+            parameterType="long">
+        SELECT *
+        FROM community_comment_tbl
+        WHERE community_id = #{communityId}
+          AND deleted_at IS NULL
+        ORDER BY created_at ASC
+    </select>
+
+    <insert id="insert"
+            parameterType="com.my.community.domain.Comment"
+            useGeneratedKeys="true"
+            keyProperty="commentId">
+        INSERT INTO community_comment_tbl
+            (community_id, user_id, parent_comment_id, content)
+        VALUES
+            (#{communityId}, #{userId}, #{parentCommentId}, #{content})
+    </insert>
+
+    <update id="update" parameterType="map">
+        UPDATE community_comment_tbl
+        SET content = #{content},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE comment_id = #{commentId}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete" parameterType="long">
+        UPDATE community_comment_tbl
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE comment_id = #{commentId}
+          AND deleted_at IS NULL
+    </update>
+</mapper>

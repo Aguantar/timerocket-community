@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.my.community.mapper.CommunityMapper">
+
+    <sql id="Base_Column_List">
+        community_id, user_id, theme_id, title, content,
+        view_count, like_count, save_count, attachment_count,
+        status, created_at, updated_at, deleted_at
+    </sql>
+
+    <select id="selectById"
+            parameterType="long"
+            resultType="com.my.community.domain.Community">
+        SELECT <include refid="Base_Column_List"/>
+        FROM community_tbl
+        WHERE community_id = #{communityId}
+        AND status = 'ACTIVE'
+    </select>
+
+    <select id="selectPage"
+            parameterType="map"
+            resultType="com.my.community.domain.Community">
+        SELECT <include refid="Base_Column_List"/>,
+        (SELECT COUNT(*)
+                FROM community_comment_tbl c
+             WHERE c.community_id = community_tbl.community_id
+               AND c.deleted_at IS NULL
+           ) AS comment_count
+        FROM community_tbl
+        WHERE status = 'ACTIVE'
+        <if test="themeId != 0">
+            AND theme_id = #{themeId}
+        </if>
+        ORDER BY created_at DESC, community_id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+       <!-- 2) 검색 + 페이징 전용: q 조건 포함 -->
+    <select id="selectPageWithSearch"
+            parameterType="map"
+            resultType="com.my.community.domain.Community">
+        SELECT <include refid="Base_Column_List"/>,
+        (SELECT COUNT(*)
+        FROM community_comment_tbl c
+        WHERE c.community_id = community_tbl.community_id
+        AND c.deleted_at IS NULL
+        ) AS comment_count
+        FROM community_tbl
+        WHERE status = 'ACTIVE'
+        <!-- 전체(0)가 아니면 테마 필터 -->
+        <if test="themeId != 0">
+            AND theme_id = #{themeId}
+        </if>
+        <!-- 검색어가 있으면 title/content LIKE -->
+        <if test="q != null and q.trim() != ''">
+            AND ( title   LIKE CONCAT('%', #{q}, '%')
+            OR content LIKE CONCAT('%', #{q}, '%') )
+        </if>
+        ORDER BY created_at DESC, community_id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+
+    <insert id="insert" parameterType="com.my.community.domain.Community" useGeneratedKeys="true" keyProperty="communityId">
+        INSERT INTO community_tbl
+            (user_id, theme_id, title, content)
+        VALUES
+            (#{userId}, #{themeId}, #{title}, #{content})
+    </insert>
+
+    <update id="update" parameterType="com.my.community.domain.Community">
+        UPDATE community_tbl
+        SET title = #{title},
+            content = #{content}
+        WHERE community_id = #{communityId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <update id="softDelete">
+        UPDATE community_tbl
+        SET status = 'DELETED',
+            deleted_at = CURRENT_TIMESTAMP
+        WHERE community_id = #{communityId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <update id="incrementViewCount" parameterType="long">
+        UPDATE community_tbl
+        SET view_count = view_count + 1
+        WHERE community_id = #{communityId}
+          AND status = 'ACTIVE'
+    </update>
+</mapper>

@@ -1,4 +1,4 @@
-package com.my.communitybackend.domain;
+package com.my.community.domain;
 
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -18,4 +18,12 @@ public class Community {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+    private int commentCount;
+
+    public Integer getCommentCount() {
+        return commentCount;
+    }
+    public void setCommentCount(Integer commentCount) {
+        this.commentCount = commentCount;
+    }
 }

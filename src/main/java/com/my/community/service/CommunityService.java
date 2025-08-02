@@ -1,9 +1,11 @@
+// src/main/java/com/my/community/service/CommunityService.java
 package com.my.community.service;
 
 import com.my.community.domain.Community;
 import com.my.community.mapper.CommunityMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -14,32 +16,37 @@ public class CommunityService {
         this.mapper = mapper;
     }
 
-    public List<Community> getFeed(int page, int size, Long themeId) {
-        int offset = (page - 1) * size;
-        return mapper.selectPage(offset, size, themeId);
+    /** 1. 무한 스크롤용 목록 조회 (offset, limit, themeId) */
+    public List<Community> getFeedByOffset(int offset, int limit, int themeId) {
+        return mapper.selectPage(offset, limit, themeId);
     }
 
-    public Community getOne(Long id) {
-        return mapper.selectById(id);
-    }
-
+    /** 2. 단일 게시글 조회 + 조회수 1 증가 */
     @Transactional
-    public void create(Community community) {
+    public Community getById(Long communityId) {
+        mapper.incrementViewCount(communityId);
+        return mapper.selectById(communityId);
+    }
+
+    /** 3. 게시글 생성 */
+    public Community create(Community community) {
         mapper.insert(community);
+        return community;
     }
 
-    @Transactional
+    /** 4. 게시글 수정 */
     public void update(Community community) {
         mapper.update(community);
     }
 
-    @Transactional
-    public void delete(Long id) {
-        mapper.softDelete(id);
+    /** 5. 게시글 소프트 삭제 */
+    public void delete(Long communityId) {
+        mapper.softDelete(communityId);
     }
 
-    @Transactional
-    public void restore(Long id) {
-        mapper.restore(id);
+    /** 6. 검색 + 페이징 */
+    public List<Community> searchFeed(int offset, int limit, int themeId, String q) {
+        // communityMapper 가 아니라 mapper 필드를 사용합니다
+        return mapper.selectPageWithSearch(offset, limit, themeId, q);
     }
 }

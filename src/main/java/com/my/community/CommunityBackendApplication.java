@@ -1,4 +1,4 @@
-package com.my.communitybackend;
+package com.my.community;
 
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
