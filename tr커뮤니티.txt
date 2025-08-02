@@ -1,0 +1,275 @@
+-- ========================================
+-- 0) 테마 테이블
+-- ========================================
+CREATE TABLE `theme_tbl` (
+  `theme_id`    BIGINT       NOT NULL AUTO_INCREMENT,  -- 테마 고유번호 (PK)
+  `name`        VARCHAR(100) NOT NULL,                 -- 테마명
+  `description` TEXT        DEFAULT NULL,              -- 설명
+  PRIMARY KEY (`theme_id`),
+  UNIQUE KEY `uq_theme_name` (`name`)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
+
+
+-- ========================================
+-- 1) 커뮤니티 테이블
+-- ========================================
+CREATE TABLE `community_tbl` (
+  `community_id`     BIGINT         NOT NULL AUTO_INCREMENT,
+  `user_id`          BIGINT         NOT NULL,
+  `theme_id`         BIGINT         NOT NULL,                    -- 추가: 테마 FK
+  `title`            VARCHAR(255)   NOT NULL,
+  `content`          TEXT           NOT NULL,
+  `view_count`       INT UNSIGNED   NOT NULL DEFAULT 0,
+  `like_count`       INT UNSIGNED   NOT NULL DEFAULT 0,
+  `save_count`       INT UNSIGNED   NOT NULL DEFAULT 0,
+  `attachment_count` INT UNSIGNED   NOT NULL DEFAULT 0,
+  `status`           ENUM('ACTIVE','DELETED') NOT NULL DEFAULT 'ACTIVE',
+  `created_at`       TIMESTAMP      NULL    DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       TIMESTAMP      NULL    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at`       TIMESTAMP      NULL    DEFAULT NULL,
+  PRIMARY KEY (`community_id`),
+  -- 조회·필터용 인덱스
+  KEY `idx_community_user_created`   (`user_id`,`created_at`),
+  KEY `idx_community_status`         (`status`,`created_at`),
+  KEY `idx_community_theme_created`  (`theme_id`,`created_at`),
+  KEY `idx_community_status_theme`   (`status`,`theme_id`,`created_at`),
+  -- FK 제약
+  CONSTRAINT `fk_community_user`
+    FOREIGN KEY (`user_id`)  REFERENCES `user_tbl`   (`user_id`)
+      ON DELETE CASCADE,
+  CONSTRAINT `fk_community_theme`
+    FOREIGN KEY (`theme_id`) REFERENCES `theme_tbl` (`theme_id`)
+      ON DELETE RESTRICT
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
+
+
+-- ========================================
+-- 2) 좋아요 테이블
+-- ========================================
+CREATE TABLE `community_like_tbl` (
+  `like_id`        BIGINT       NOT NULL AUTO_INCREMENT,
+  `community_id`   BIGINT       NOT NULL,
+  `user_id`        BIGINT       NOT NULL,
+  `created_at`     TIMESTAMP    NULL    DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`like_id`),
+  UNIQUE KEY `uq_like_community_user` (`community_id`,`user_id`),
+  KEY `idx_like_community` (`community_id`),
+  CONSTRAINT `fk_like_community`
+    FOREIGN KEY (`community_id`) REFERENCES `community_tbl` (`community_id`)
+      ON DELETE CASCADE,
+  CONSTRAINT `fk_like_user`
+    FOREIGN KEY (`user_id`)      REFERENCES `user_tbl`       (`user_id`)
+      ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
+
+
+-- ========================================
+-- 3) 저장(스크랩) 테이블
+-- ========================================
+CREATE TABLE `community_save_tbl` (
+  `save_id`        BIGINT       NOT NULL AUTO_INCREMENT,
+  `community_id`   BIGINT       NOT NULL,
+  `user_id`        BIGINT       NOT NULL,
+  `created_at`     TIMESTAMP    NULL    DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`save_id`),
+  UNIQUE KEY `uq_save_community_user` (`community_id`,`user_id`),
+  KEY `idx_save_community` (`community_id`),
+  CONSTRAINT `fk_save_community`
+    FOREIGN KEY (`community_id`) REFERENCES `community_tbl` (`community_id`)
+      ON DELETE CASCADE,
+  CONSTRAINT `fk_save_user`
+    FOREIGN KEY (`user_id`)      REFERENCES `user_tbl`       (`user_id`)
+      ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
+
+
+-- ========================================
+-- 4) 첨부파일 테이블
+-- ========================================
+CREATE TABLE `community_file_tbl` (
+  `file_id`        BIGINT         NOT NULL AUTO_INCREMENT,
+  `community_id`   BIGINT         NOT NULL,
+  `original_name`  VARCHAR(255)   NOT NULL,
+  `unique_name`    VARCHAR(255)   NOT NULL,
+  `saved_path`     VARCHAR(500)   NOT NULL,
+  `file_type`      VARCHAR(100)   DEFAULT NULL,
+  `file_size`      BIGINT         DEFAULT NULL,
+  `file_order`     INT            NOT NULL DEFAULT 0,
+  `created_at`     TIMESTAMP      NULL    DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`file_id`),
+  UNIQUE KEY `uq_file_order` (`community_id`,`file_order`),
+  KEY `idx_file_community` (`community_id`),
+  CONSTRAINT `fk_file_community`
+    FOREIGN KEY (`community_id`) REFERENCES `community_tbl` (`community_id`)
+      ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
+
+
+-- ========================================
+-- 5) 댓글·대댓글 테이블
+-- ========================================
+CREATE TABLE `community_comment_tbl` (
+  `comment_id`        BIGINT       NOT NULL AUTO_INCREMENT,
+  `community_id`      BIGINT       NOT NULL,
+  `user_id`           BIGINT       NOT NULL,
+  `content`           TEXT         NOT NULL,
+  `parent_comment_id` BIGINT       DEFAULT NULL,
+  `created_at`        TIMESTAMP    NULL    DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        TIMESTAMP    NULL    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at`        TIMESTAMP    NULL    DEFAULT NULL,
+  PRIMARY KEY (`comment_id`),
+  KEY `idx_comment_community_parent` (`community_id`,`parent_comment_id`,`created_at`),
+  CONSTRAINT `fk_comment_community`
+    FOREIGN KEY (`community_id`) REFERENCES `community_tbl`      (`community_id`)
+      ON DELETE CASCADE,
+  CONSTRAINT `fk_comment_user`
+    FOREIGN KEY (`user_id`)      REFERENCES `user_tbl`            (`user_id`)
+      ON DELETE CASCADE,
+  CONSTRAINT `fk_comment_parent`
+    FOREIGN KEY (`parent_comment_id`) REFERENCES `community_comment_tbl` (`comment_id`)
+      ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
+
+
+-- ========================================
+-- 6) 집계용 카운트 자동 관리 트리거
+-- ========================================
+DELIMITER $$
+
+-- 좋아요 수 자동 증감
+CREATE TRIGGER trg_inc_like
+AFTER INSERT ON community_like_tbl
+FOR EACH ROW
+BEGIN
+  UPDATE community_tbl
+    SET like_count = like_count + 1
+  WHERE community_id = NEW.community_id;
+END$$
+
+CREATE TRIGGER trg_dec_like
+AFTER DELETE ON community_like_tbl
+FOR EACH ROW
+BEGIN
+  UPDATE community_tbl
+    SET like_count = like_count - 1
+  WHERE community_id = OLD.community_id;
+END$$
+
+-- 저장 수 자동 증감
+CREATE TRIGGER trg_inc_save
+AFTER INSERT ON community_save_tbl
+FOR EACH ROW
+BEGIN
+  UPDATE community_tbl
+    SET save_count = save_count + 1
+  WHERE community_id = NEW.community_id;
+END$$
+
+CREATE TRIGGER trg_dec_save
+AFTER DELETE ON community_save_tbl
+FOR EACH ROW
+BEGIN
+  UPDATE community_tbl
+    SET save_count = save_count - 1
+  WHERE community_id = OLD.community_id;
+END$$
+
+-- 첨부파일 수 자동 증감
+CREATE TRIGGER trg_inc_attachment
+AFTER INSERT ON community_file_tbl
+FOR EACH ROW
+BEGIN
+  UPDATE community_tbl
+    SET attachment_count = attachment_count + 1
+  WHERE community_id = NEW.community_id;
+END$$
+
+CREATE TRIGGER trg_dec_attachment
+AFTER DELETE ON community_file_tbl
+FOR EACH ROW
+BEGIN
+  UPDATE community_tbl
+    SET attachment_count = attachment_count - 1
+  WHERE community_id = OLD.community_id;
+END$$
+
+DELIMITER ;
+
+-- 0) 테마 기본값 삽입
+INSERT INTO theme_tbl (name, description) VALUES
+  ('전체',   '전체 보기'),
+  ('자유',   NULL),
+  ('자랑',   NULL),
+  ('토론',   NULL),
+  ('디자인', NULL),
+  ('공유',   NULL);
+  
+  commit;
+
+
+INSERT INTO user_tbl (
+  email,
+  password,
+  nickname,
+  role,
+  status,
+  provider,
+  provider_id
+) VALUES (
+  'test@example.com',    -- 이메일 (NOT NULL)
+  'password123',         -- 비밀번호 (해시 대신 예시)
+  'testnick',            -- 닉네임
+  'USER',                -- 역할 (예: USER, ADMIN)
+  'ACTIVE',              -- 상태 (예: ACTIVE, DELETED)
+  'LOCAL',               -- 로그인 프로바이더 (예: LOCAL, GOOGLE 등)
+  NULL                   -- 프로바이더 아이디 (소셜 로그인 시 값)
+);
+commit;
+
+INSERT INTO community_tbl (
+  user_id,
+  theme_id,
+  title,
+  content
+) VALUES (
+  1,
+  2,
+  '자유 테마 테스트 글',
+  '이 글은 자유(theme_id=2) 테마의 테스트용 게시글입니다.'
+);
+
+
+
+-- 1. 번호를 증가시킬 변수 초기화
+SET @n := 0;
+
+-- 2. cross join 으로 10×10 행을 만든 뒤 @n 변수를 1씩 증가시키며 삽입
+INSERT INTO community_tbl (user_id, theme_id, title, content)
+SELECT
+  1 AS user_id,
+  ((@n := @n + 1) - 1) % 6 + 1    AS theme_id,                            -- theme_id 1~6 순환
+  CONCAT('더미 게시글 ', @n)      AS title,                               -- "더미 게시글 1" ~ "더미 게시글 100"
+  '무한 스크롤 테스트용 더미 콘텐츠입니다.' AS content
+FROM
+  (SELECT 1 AS x UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+   UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+  ) a
+CROSS JOIN
+  (SELECT 1 AS x UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+   UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+  ) b
+LIMIT 100;
+
+commit;
